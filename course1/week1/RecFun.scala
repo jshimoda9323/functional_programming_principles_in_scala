@@ -1,5 +1,5 @@
 package recfun
-
+import scala.annotation.tailrec
 object RecFun extends RecFunInterface {
 
   def main(args: Array[String]): Unit = {
@@ -31,12 +31,14 @@ object RecFun extends RecFunInterface {
    * Exercise 2
    */
   def balance(chars: List[Char]): Boolean = {
-    def balanceIter(chars: List[Char], depth: Int): Int = {
+    @tailrec def balanceIter(chars: List[Char], depth: Int): Int = {
       if (depth < 0) -1
       else if (chars.isEmpty) depth
-      else if (chars.head == ')') balanceIter(chars.tail,depth-1)
-      else if (chars.head != '(') balanceIter(chars.tail,depth)
-      else balanceIter(chars.tail,depth+1)
+      else {
+        if (chars.head == ')') balanceIter(chars.tail, depth - 1)
+        else if (chars.head != '(') balanceIter(chars.tail, depth)
+        else balanceIter(chars.tail, depth + 1)
+      }
     }
     (balanceIter(chars,0) == 0)
   }
