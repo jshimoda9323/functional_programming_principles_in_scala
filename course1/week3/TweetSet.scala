@@ -146,9 +146,9 @@ class NonEmpty(elem: Tweet, left: TweetSet, right: TweetSet) extends TweetSet {
   def union(that: TweetSet): TweetSet = left union (right union (that incl elem))
 
   def mostRetweeted: Tweet = {
+    lazy val l = left.mostRetweeted
+    lazy val r = right.mostRetweeted
     if ((!left.isEmpty)&&(!right.isEmpty)) {
-      val l = left.mostRetweeted
-      val r = right.mostRetweeted
       if (l.retweets > r.retweets)
         if (l.retweets > elem.retweets)
           l
@@ -161,13 +161,11 @@ class NonEmpty(elem: Tweet, left: TweetSet, right: TweetSet) extends TweetSet {
           elem
     } else {
       if (!left.isEmpty) {
-        val l = left.mostRetweeted
         if (l.retweets > elem.retweets)
           l
         else
           elem
       } else if (!right.isEmpty) {
-        val r = right.mostRetweeted
         if (r.retweets > elem.retweets)
           r
         else
@@ -234,8 +232,8 @@ object GoogleVsApple {
 
   def f(p: Tweet, l: List[String]): Boolean = if (l.isEmpty) false else if (p.text.contains(l.head)) true else f(p,l.tail)
 
-  lazy val googleTweets: TweetSet = TweetReader.allTweets.filter(p => f(p,google))
-  lazy val appleTweets: TweetSet = TweetReader.allTweets.filter(p => f(p,apple))
+  lazy val googleTweets: TweetSet = TweetReader.allTweets.filter(p => google.exists(word => p.text.contains(word)))
+  lazy val appleTweets: TweetSet = TweetReader.allTweets.filter(p => apple.exists(word => p.text.contains(word)))
 
   /**
    * A list of all tweets mentioning a keyword from either apple or google,
@@ -243,6 +241,7 @@ object GoogleVsApple {
    */
   //lazy val googlePopular: TweetList = googleTweets.descendingByRetweet
   lazy val trending: TweetList = (googleTweets union appleTweets).descendingByRetweet
+
 }
 
 object Main extends App {
