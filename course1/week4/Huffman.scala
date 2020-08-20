@@ -347,10 +347,10 @@ trait Huffman extends HuffmanInterface {
    * and then uses it to perform the actual encoding.
    */
   def quickEncode(tree: CodeTree)(text: List[Char]): List[Bit] = {
-    val convertTree = convert(tree)
+    val precomputedCodeTable = convert(tree)
     def quickEncodeAcc(text: List[Char], acc: List[Bit]): List[Bit] = text match {
       case List() => acc
-      case top :: rest => quickEncodeAcc(rest, acc ::: codeBits(convertTree)(top))
+      case top :: rest => quickEncodeAcc(rest, acc ::: codeBits(precomputedCodeTable)(top))
     }
     quickEncodeAcc(text, List())
   }
