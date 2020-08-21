@@ -267,20 +267,14 @@ trait Huffman extends HuffmanInterface {
    * into a sequence of bits.
    */
   def encode(tree: CodeTree)(text: List[Char]): List[Bit] = {
-    def contains(char: Char, charList: List[Char]): Boolean = charList match {
-      case List() => false
-      case elem :: rest =>
-        if (char == elem) true
-        else contains(char, rest)
-    }
     def encodeCharAcc(char: Char, currentTree: CodeTree, bits: List[Bit]): List[Bit] = currentTree match {
       case leaf: Leaf => bits
       case fork: Fork =>
-        if (contains(char, fork.left.charList)) encodeCharAcc(char, fork.left, 0 :: bits)
+        if (fork.left.charList.contains(char)) encodeCharAcc(char, fork.left, 0 :: bits)
         else encodeCharAcc(char, fork.right, 1 :: bits)
     }
     def encodeChar(char: Char): List[Bit] =
-      if (!contains(char, tree.charList)) throw new Exception("encode.encodeChar No such character")
+      if (!(tree.charList.contains(char))) throw new Exception("encode.encodeChar No such character")
       else encodeCharAcc(char, tree, List()).reverse
     def encodeAcc(text: List[Char], acc: List[Bit]): List[Bit] =
       if (text.isEmpty) acc
