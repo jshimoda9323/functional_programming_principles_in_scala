@@ -85,30 +85,36 @@ trait Huffman extends HuffmanInterface {
    */
   def times(chars: List[Char]): List[(Char, Int)] = {
     /*
-     * Update the accumulator given a single character.
-     * Recursively iterate over the list until ia matching character is found.
-     * If found update the pair, otherwise create a new pair.
+     * Find the index of an element of inList where the Char of the pair matches inChar
      */
-    def update(inChar: Char, acc: List[(Char, Int)]): List[(Char, Int)] = {
-      acc match {
-        case List() => List((inChar, 1))
-        case (c, freq) :: rest =>
-          if (c == inChar)
-            (c, freq + 1) :: rest
+    def find(inChar: Char, inList: List[(Char, Int)]): Int = {
+      def findAcc(inChar: Char, inList: List[(Char, Int)], idx: Int): Int = inList match {
+        case List() => -1
+        case x :: xs => {
+          val (char, freq) = x
+          if (char == inChar)
+            idx
           else
-            (c, freq) :: update(inChar, rest)
+            findAcc(inChar, xs, idx + 1)
+        }
       }
+      findAcc(inChar, inList, 0)
     }
 
     /*
      * Accumulate a list of (Char, Int) frequencies into table acc
      */
-    def timesAcc(chars: List[Char], acc: List[(Char, Int)]): List[(Char, Int)] = {
-      chars match {
+    def timesAcc(chars: List[Char], acc: List[(Char, Int)]): List[(Char, Int)] = chars match {
         case List() => acc
-        case a :: as => timesAcc(as, update(a, acc))
+        case a :: as => {
+          val idx = find(a, acc)
+          if (idx >=0 ) {
+            val (foundChar, foundInt) = acc(idx)
+            timesAcc(as, acc.updated(idx, (foundChar, foundInt + 1)))
+          } else
+            timesAcc(as, (a, 1) :: acc)
+        }
       }
-    }
     timesAcc(chars, List())
   }
 
