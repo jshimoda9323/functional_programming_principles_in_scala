@@ -218,17 +218,6 @@ trait Huffman extends HuffmanInterface {
 
   type Bit = Int
 
-  /*
-   * Reverses a list
-   */
-  def reverse[T](l: List[T]): List[T] = {
-    def reverseAcc(rem: List[T], acc: List[T]): List[T] = rem match {
-      case List() => acc
-      case top :: rest => reverseAcc(rest, top :: acc)
-    }
-    reverseAcc(l, List())
-  }
-
   /**
    * This function decodes the bit sequence `bits` using the code tree `tree` and returns
    * the resulting list of characters.
@@ -248,7 +237,7 @@ trait Huffman extends HuffmanInterface {
         }
       }
     }
-    reverse(decodeAcc(tree, bits, List()))
+    decodeAcc(tree, bits, List()).reverse
   }
 
 
@@ -292,11 +281,11 @@ trait Huffman extends HuffmanInterface {
     }
     def encodeChar(char: Char): List[Bit] =
       if (!contains(char, tree.charList)) throw new Exception("encode.encodeChar No such character")
-      else reverse(encodeCharAcc(char, tree, List()))
+      else encodeCharAcc(char, tree, List()).reverse
     def encodeAcc(text: List[Char], acc: List[Bit]): List[Bit] =
       if (text.isEmpty) acc
       else encodeAcc(text.tail, encodeChar(text.head) ::: acc)
-    encodeAcc(reverse(text),List())
+    encodeAcc(text.reverse,List())
   }
 
   // Part 4b: Encoding using code table
