@@ -34,15 +34,9 @@ case class Leaf(char: Char, weight: Int) extends CodeTree {
 trait Huffman extends HuffmanInterface {
 
   // Part 1: Basics
-  def weight(tree: CodeTree): Int = tree match {
-    case Fork(left, right, chars, weight) => weight
-    case Leaf(char, weight) => weight
-  }
+  def weight(tree: CodeTree): Int = tree.getWeight
 
-  def chars(tree: CodeTree): List[Char] = tree match {
-    case Fork(left, right, chars, weight) => chars
-    case Leaf(char, weight) => List(char)
-  }
+  def chars(tree: CodeTree): List[Char] = tree.charList
 
   def makeCodeTree(left: CodeTree, right: CodeTree) =
     Fork(left, right, chars(left) ::: chars(right), weight(left) + weight(right))
@@ -84,37 +78,22 @@ trait Huffman extends HuffmanInterface {
    *   }
    */
   def times(chars: List[Char]): List[(Char, Int)] = {
+
     /*
-     * Find the index of an element of inList where the Char of the pair matches inChar
+     * Update the accumulator with an occurrence of char.
      */
-    def find(inChar: Char, inList: List[(Char, Int)]): Int = {
-      def findAcc(inChar: Char, inList: List[(Char, Int)], idx: Int): Int = inList match {
-        case List() => -1
-        case x :: xs => {
-          val (char, freq) = x
-          if (char == inChar)
-            idx
-          else
-            findAcc(inChar, xs, idx + 1)
-        }
-      }
-      findAcc(inChar, inList, 0)
-    }
+    def updateAcc(char: Char, oldAcc: List[(Char, Int)], newAcc: List[(Char, Int)]): List[(Char, Int)] =
+      if (oldAcc.isEmpty) (char, 1) :: newAcc
+      else if (oldAcc.head._1 == char) (char, oldAcc.head._2 + 1) :: oldAcc.tail ::: newAcc
+      else updateAcc(char, oldAcc.tail, oldAcc.head :: newAcc)
 
     /*
      * Accumulate a list of (Char, Int) frequencies into table acc
      */
-    def timesAcc(chars: List[Char], acc: List[(Char, Int)]): List[(Char, Int)] = chars match {
-        case List() => acc
-        case a :: as => {
-          val idx = find(a, acc)
-          if (idx >=0 ) {
-            val (foundChar, foundInt) = acc(idx)
-            timesAcc(as, acc.updated(idx, (foundChar, foundInt + 1)))
-          } else
-            timesAcc(as, (a, 1) :: acc)
-        }
-      }
+    def timesAcc(chars: List[Char], acc: List[(Char, Int)]): List[(Char, Int)] =
+      if (chars.isEmpty) acc
+      else timesAcc(chars.tail, updateAcc(chars.head, acc, List()))
+
     timesAcc(chars, List())
   }
 
@@ -123,22 +102,13 @@ trait Huffman extends HuffmanInterface {
    * Given a list of items of type T, and a comparator function, returns sorted list.
    */
   def insertSort[T](list: List[T], comparator: (T,T)=>Int): List[T] = {
-    def insert(item: T, acc: List[T]): List[T] = {
-      acc match {
-        case List() => List(item)
-        case top :: remaining =>
-          if (comparator(item, top) <= 0)
-            item :: acc
-          else
-            top :: insert(item, remaining)
-      }
-    }
-    def iterAndAccumulate(partialList: List[T], acc: List[T]): List[T] = {
-      partialList match {
-        case List() => acc
-        case top :: remaining => iterAndAccumulate(remaining, insert(top, acc))
-      }
-    }
+    def insert(item: T, acc: List[T]): List[T] =
+      if (acc.isEmpty) List(item)
+      else if (comparator(item, acc.head) <= 0) item :: acc
+      else acc.head :: insert(item, acc.tail)
+    def iterAndAccumulate(partialList: List[T], acc: List[T]): List[T] =
+      if (partialList.isEmpty) acc
+      else iterAndAccumulate(partialList.tail, insert(partialList.head, acc))
     iterAndAccumulate(list, List())
   }
 
@@ -183,7 +153,7 @@ trait Huffman extends HuffmanInterface {
    * unchanged.
    */
   def combine(trees: List[CodeTree]): List[CodeTree] = trees match {
-    case List() => List()
+    case List() => trees
     case first :: rest => rest match {
       case List() => trees
       case second :: remaining => insertSort[CodeTree](Fork(first, second, first.charList ::: second.charList, first.getWeight + second.getWeight) :: remaining, first.comparator)
@@ -274,10 +244,10 @@ trait Huffman extends HuffmanInterface {
    */
   def encode(tree: CodeTree)(text: List[Char]): List[Bit] = {
     def encodeCharAcc(char: Char, currentTree: CodeTree, bits: List[Bit]): List[Bit] = currentTree match {
-      case leaf: Leaf => bits
-      case fork: Fork =>
-        if (fork.left.charList.contains(char)) encodeCharAcc(char, fork.left, 0 :: bits)
-        else encodeCharAcc(char, fork.right, 1 :: bits)
+      case Leaf(char, weight) => bits
+      case Fork(left, right, chars, weight) =>
+        if (left.charList.contains(char)) encodeCharAcc(char, left, 0 :: bits)
+        else encodeCharAcc(char, right, 1 :: bits)
     }
     def encodeChar(char: Char): List[Bit] =
       if (!(tree.charList.contains(char))) throw new Exception("encode.encodeChar No such character")
@@ -296,12 +266,10 @@ trait Huffman extends HuffmanInterface {
    * This function returns the bit sequence that represents the character `char` in
    * the code table `table`.
    */
-  def codeBits(table: CodeTable)(char: Char): List[Bit] = table match {
-    case List() => List()
-    case top :: rest =>
-      if (top._1 == char) top._2
-      else codeBits(rest)(char)
-  }
+  def codeBits(table: CodeTable)(char: Char): List[Bit] =
+    if (table.isEmpty) List()
+    else if (table.head._1 == char) table.head._2
+    else codeBits(table.tail)(char)
 
   /**
    * Given a code tree, create a code table which contains, for every character in the
@@ -312,8 +280,8 @@ trait Huffman extends HuffmanInterface {
    * sub-trees, think of how to build the code table for the entire tree.
    */
   def convert(tree: CodeTree): CodeTable = tree match {
-    case leaf: Leaf => List((leaf.char, List()))
-    case fork: Fork => mergeCodeTables(convert(fork.left),convert(fork.right))
+    case Leaf(char, weight) => List((char, List()))
+    case Fork(right, left, chars, weight) => mergeCodeTables(convert(left),convert(right))
   }
 
   /**
@@ -322,11 +290,10 @@ trait Huffman extends HuffmanInterface {
    * on the two parameter code tables.
    */
   def mergeCodeTables(a: CodeTable, b: CodeTable): CodeTable = {
-    def prependBit(bit: Bit, ct: CodeTable): CodeTable = ct match {
-      case List() => ct
-      case top :: rest => (top._1, bit :: top._2) :: prependBit(bit, rest)
-    }
-    prependBit(0, a) ::: prependBit(1, b)
+    def prependBit(bit: Bit, ct: CodeTable): CodeTable =
+      if (ct.isEmpty) ct
+      else (ct.head._1, bit :: ct.head._2) :: prependBit(bit, ct.tail)
+    prependBit(1, a) ::: prependBit(0, b)
   }
 
   /**
@@ -337,10 +304,9 @@ trait Huffman extends HuffmanInterface {
    */
   def quickEncode(tree: CodeTree)(text: List[Char]): List[Bit] = {
     val precomputedCodeTable = convert(tree)
-    def quickEncodeAcc(text: List[Char], acc: List[Bit]): List[Bit] = text match {
-      case List() => acc
-      case top :: rest => quickEncodeAcc(rest, acc ::: codeBits(precomputedCodeTable)(top))
-    }
+    def quickEncodeAcc(text: List[Char], acc: List[Bit]): List[Bit] =
+      if (text.isEmpty) acc
+      else quickEncodeAcc(text.tail, acc ::: codeBits(precomputedCodeTable)(text.head))
     quickEncodeAcc(text, List())
   }
 }
